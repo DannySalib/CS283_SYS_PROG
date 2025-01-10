@@ -22,20 +22,23 @@ Please provide answers to these questions using markdown notation and place them
 1. Select with an `x` the platform you will be using for your course deliverables:
 
     - [ ] drexel's tux cluster
-    - [ ] WSL on Windows
+    - [X] WSL on Windows (*NOTE* on my desktop PC)
     - [ ] Orbstack on MacOs
     - [ ] VMWare Fusion
-    - [ ] Somthing else (put name here)
+    - [X] Somthing else (I use ubuntu on my laptop) 
 
 2. I have installed my virtual machine, tested it, feel comfortable using it, and validated that the required software is installed:
 
-    - [ ] YES
+    - [X] YES
     - [ ] N/A - I plan to use tux
     - [ ] NO - Not Yet
 
 
 3. Please provide a link to the repository you are using for this class.
+# [My Repo](https://github.com/DannySalib/CS283_SYS_PROG)
 
 4. Briefly describe what you want to get out of this class.
+    My goals in this class is to earn a good grade while also learning to apply the practical skills that can be learned from this class in my own programming skills. 
 
 5. Briefly describe any concerns you might be having with being successful in this class (if any).
+    I struggle managing deadlines, given that I am taking 3 CS classes, writing intensive class, etc. I'll have to make sure I am up to date on everything. 
