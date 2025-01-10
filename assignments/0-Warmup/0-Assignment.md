@@ -36,7 +36,7 @@ Please provide answers to these questions using markdown notation and place them
 
 3. Please provide a link to the repository you are using for this class.
 
-# [My Repo](https://github.com/DannySalib/CS283_SYS_PROG)
+[My Repo](https://github.com/DannySalib/CS283_SYS_PROG)
 
 4. Briefly describe what you want to get out of this class.
 
