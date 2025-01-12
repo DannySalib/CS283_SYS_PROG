@@ -35,10 +35,13 @@ Please provide answers to these questions using markdown notation and place them
 
 
 3. Please provide a link to the repository you are using for this class.
-# [My Repo](https://github.com/DannySalib/CS283_SYS_PROG)
+
+[My Repo](https://github.com/DannySalib/CS283_SYS_PROG)
 
 4. Briefly describe what you want to get out of this class.
-    My goals in this class is to earn a good grade while also learning to apply the practical skills that can be learned from this class in my own programming skills. 
 
-5. Briefly describe any concerns you might be having with being successful in this class (if any).
-    I struggle managing deadlines, given that I am taking 3 CS classes, writing intensive class, etc. I'll have to make sure I am up to date on everything. 
+My goals in this class is to earn a good grade while also learning to apply the practical skills that can be learned from this class in my own programming skills. 
+
+6. Briefly describe any concerns you might be having with being successful in this class (if any).
+
+I struggle managing deadlines, given that I am taking 3 CS classes, writing intensive class, etc. I'll have to make sure I am up to date on everything. 
