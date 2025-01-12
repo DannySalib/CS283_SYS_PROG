@@ -15,7 +15,6 @@ int  setup_buff(char *, char *, int);
 int  count_words(char *, int, int);
 //add additional prototypes here
 
-
 int setup_buff(char *buff, char *user_str, int len){
     //TODO: #4:  Implement the setup buff as per the directions
    	
@@ -27,8 +26,6 @@ int setup_buff(char *buff, char *user_str, int len){
 
     char* curr_char = user_str;
     char* curr_buff_char = buff;
-
-    
 
     while (*curr_char != '\0') {
 	if (curr_buff_len > len) {
