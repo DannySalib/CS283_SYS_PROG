@@ -14,10 +14,11 @@ int  setup_buff(char *, char *, int);
 //prototypes for functions to handle required functionality
 int  count_words(char *, int, int);
 //add additional prototypes here
+int reverse_words(char *, int, int, char *);
+int print_words_and_their_lengths(char *, int, int);
 
 int setup_buff(char *buff, char *user_str, int len){
     //TODO: #4:  Implement the setup buff as per the directions
-   	
     int curr_buff_len = 0;
     int i = 0;    
 
@@ -28,44 +29,47 @@ int setup_buff(char *buff, char *user_str, int len){
     char* curr_buff_char = buff;
 
     while (*curr_char != '\0') {
-	if (curr_buff_len > len) {
-		// we have exceeded max buffer size 
-		return -1; // The user supplied string is too large
-	}
+        if (curr_buff_len > len) {
+            // we have exceeded max buffer size 
+            return -1; // The user supplied string is too large
+        }
 
-	// A char is valid if it meets the following conditions 
-	// 1. It is not a tab char 
-	// 2. It is not a trailing space char 
-	if (*curr_char != '\t') {
-		if (*curr_char != ' ') {
-			is_valid_char = true;
-			has_preceeding_space_char = false;
-		} else {
-			if (!has_preceeding_space_char) {
-				has_preceeding_space_char = true;
-				is_valid_char = true;
-			}
-		}
-	}
+        // A char is valid if it meets the following conditions 
+        // 1. It is not a trailing space char 
+        // 2. treat tabs as space chars 
+        if (*curr_char  == '\t') {
+            *curr_char = ' '; // follow logic as if it were a space key
+        }
+        
+        // determine if there is a trailing space key
+        if (*curr_char != ' ') {
+            is_valid_char = true;
+            has_preceeding_space_char = false;
+        } else {
+            if (!has_preceeding_space_char) {
+                has_preceeding_space_char = true;
+                is_valid_char = true;
+            }
+        }
 
-	if (is_valid_char) {
-		// update the buffer @ index with the validated current char 
-		*curr_buff_char = *curr_char;
-		curr_buff_len++;
-	}
-	
-	// update for next iteration 
-	i++;
-	curr_char = user_str + (i * sizeof(char));
-	curr_buff_char = buff + (i * sizeof(char));
+        if (is_valid_char) {
+            // update the buffer @ index with the validated current char 
+            *curr_buff_char = *curr_char;
+            curr_buff_len++;
+        }
+        
+        // update for next iteration 
+        i++;
+        curr_char = user_str + (i * sizeof(char));
+        curr_buff_char = buff + (i * sizeof(char));
     }
 
-    // fill remainding memory in buffer with '.'
+    // fill remaining memory in buffer with '.'
     while (i < len) {
-	*curr_buff_char = '.';
+        *curr_buff_char = '.';
 
-	i++;
-	curr_buff_char = buff + (i * sizeof(char));
+        i++;
+        curr_buff_char = buff + (i * sizeof(char));
     }
 
     return curr_buff_len;
@@ -86,10 +90,108 @@ void usage(char *exename){
 
 int count_words(char *buff, int len, int str_len){
     //YOU MUST IMPLEMENT
-    return 0;
+    if (str_len > len) {
+	fprintf(stderr, "Cannot count user string: string length exceeds buffer size");
+	return -1;
+    }
+
+    bool in_word;
+    int i, count; 
+    char* curr_buff;
+
+    i = 0;
+    count = 0;
+    curr_buff = buff;
+
+    while (i < str_len) {
+
+	// if we iterate to a space key, we're no longer in a word
+	// if we iterate to a valid char, 
+	// 	and last char was a space key, we've found a new word
+	if (*curr_buff == ' ') {
+		in_word = false;
+	} else if (!in_word) { // assume it is a valid char 
+		in_word = true;
+		count++;
+	}	
+
+	// move to next char address 
+	i++;
+	curr_buff = buff + (i * sizeof(char));
+    }
+	
+    return count;
 }
 
 //ADD OTHER HELPER FUNCTIONS HERE FOR OTHER REQUIRED PROGRAM OPTIONS
+int reverse_words(char *buff, int len, int str_len, char* reversed_word){
+    if (str_len > len) {
+        fprintf(stderr, "Cannot count user string: string length exceeds buffer size");
+        return -1;
+    }
+
+    char *curr_buff, *curr_reversed_word;
+    bool new_word;
+    int i, j;
+
+    curr_buff = buff;
+    curr_reversed_word = reversed_word;
+    i = -1;
+    j = 0; // represnts the beginning of the current word
+    while(++i < str_len) {
+        // a new word is found when the current character is a space
+        //  or when the next character on the buffer is the end of the string
+        new_word = (*curr_buff == ' ') || ((i+1) == str_len);
+        
+        if (new_word) {
+
+            for(int k = i; k >= j; k--) *curr_reversed_word++ = *curr_buff--;
+            
+            j = i; // the beginning of the next current word is the current index
+            curr_buff = buff + (i * sizeof(char)); // return to our current buffer
+
+            // add space to end of reversed word
+            *(curr_reversed_word++) = ' ';
+        } 
+
+        curr_buff++;
+    }
+
+    return 0; //success! 
+}
+
+int print_words_and_their_lengths(char* buff, int len, int str_len) {
+    printf("Word Print\n");
+    printf("-----------\n");
+
+    if (str_len > len) {
+        fprintf(stderr, "Cannot count user string: string length exceeds buffer size");
+        return -1;
+    }
+
+    char *curr_buff;
+    int i, j, word_len;
+    bool new_word;
+    curr_buff = buff;
+    i = -1;
+    j = 0; // index of the beginning of the word
+        
+
+    while (++i <= str_len) {
+        new_word = (*curr_buff == ' ') || (i == str_len);
+        if (new_word) {
+            word_len = i - j;
+
+            curr_buff = buff + (j * sizeof(char)); // go to the beginning of the word 
+            while (j++ < i) printf("%c", *curr_buff++);
+
+            printf(" (%d)\n", word_len);
+        }
+        curr_buff++;
+    }
+
+    return 0;
+}
 
 int main(int argc, char *argv[]){
 
@@ -155,7 +257,7 @@ int main(int argc, char *argv[]){
 
 
     user_str_len = setup_buff(buff, input_string, BUFFER_SZ);     //see todos
-    printf("user str len %d\n", user_str_len);
+    // printf("user str len %d\n", user_str_len);
     if (user_str_len < 0){
         printf("Error setting up buffer, error = %d", user_str_len);
         exit(2);
@@ -170,9 +272,35 @@ int main(int argc, char *argv[]){
             }
             printf("Word Count: %d\n", rc);
             break;
-
+	
         //TODO:  #5 Implement the other cases for 'r' and 'w' by extending
         //       the case statement options
+        case 'r':
+            // create memory to store the reversed result 
+            char* reversed_word;
+            reversed_word = (char *)malloc(BUFFER_SZ);
+            if (reversed_word == NULL) { // malloc didnt work 
+            fprintf(stderr, "ERROR: Memory could not be allocated for reverse_words function.\n");
+            exit(99);
+            }
+
+            rc = reverse_words(buff, BUFFER_SZ, user_str_len, reversed_word);  //you need to implement
+            if (rc < 0){
+                printf("Error reversing words, rc = %d", rc);
+                exit(2);
+            }
+            printf("Reversed Words:%s\n", reversed_word);
+            free(reversed_word);
+            break;
+        
+        case 'w':
+            rc = print_words_and_their_lengths(buff, BUFFER_SZ, user_str_len); 
+            if (rc < 0){
+                printf("Error printing words/lengths, rc = %d", rc);
+                exit(2);
+            }
+            break;
+
         default:
             usage(argv[0]);
             exit(1);
@@ -180,6 +308,7 @@ int main(int argc, char *argv[]){
 
     //TODO:  #6 Dont forget to free your buffer before exiting
     print_buff(buff,BUFFER_SZ);
+    free(buff);
     exit(0);
 }
 
@@ -188,5 +317,17 @@ int main(int argc, char *argv[]){
 //          do you think providing both the pointer and the length
 //          is a good practice, after all we know from main() that 
 //          the buff variable will have exactly 50 bytes?
-//  
-//          PLACE YOUR ANSWER HERE
+
+/*
+ * By passing the length explicitly, the helper functions don't need to rely on 
+ *    assumptions about the buffer size. Even though buff is defined as 50 bytes, 
+ *    the actual data being processed most liekly does not use all 50 bytes. By passing the length, 
+ *    you can handle only the valid portion of the buffer without relying on any assumptions.
+ *
+ * If the buffer size changes in the future or the function is called with a buffer of different sizes, 
+ *    the existing helper functions can accommodate these changes without requiring updates 
+ *    to the code itsellf. 
+ *    
+ * By accounting for these factors, we are left with less hardcoded functions, which
+ *    allows for a robust program.
+*/
