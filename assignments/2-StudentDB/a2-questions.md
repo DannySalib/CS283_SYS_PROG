@@ -138,4 +138,3 @@ Inital Chunks for current DB = 1 chunk = 4kb raw space
 
 Number of chunks after adding ID 99999 = 
 $\qquad$Initial Chunks + Chunks needed to add ID 99999 = 1 + 2 = 3 chunks = 12kb space$
-
