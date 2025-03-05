@@ -1,40 +1,39 @@
-# Assignment: Custom Shell Part 3 - Pipes
+# Assignment: Custom Shell Part 2 - Fork/Exec
 
-This week we will build on our `dsh` Drexel Shell by implementing pipes. In the first shell assignment we approached this subject by splitting lines of input by the pipe `|` and printing out each separate command parsed between the pipes. In the second assignment we set the pipe splitting logic aside and implemented _execution_ of single commands.
+This week we will build on our `dsh` Drexel Shell by adding an implementation for the builtin command `cd`, and a `fork/exec` implementation to run "external commands".
 
-This week we'll bring these concepts together by implementing pipelined execution of multiple commands!
+This content builds on the prior assignment; if you need a refresher on what a shell is or the difference between built-in and external commands, please review the readme from that assignment.
 
 # Reuse Prior Work!
 
-The `dsh` assignments are meant to be additive. This week you'll need to use code you wrote in the first two shell assignments. Be sure to re-use your existing code, and refactor it to meet the requirements of this assignment.
+The `dsh` assignments are meant to be additive. Much of the parsing logic from the last assignement can be re-used in this assignement. The structures are a little different so you might have to refactor some of your code, but that's a great practical lesson in software engineering; the highest quality results come from frequent iteration.
 
-# Pipes
+The next section highlights the differences (both conceptually and in file structure) from the prior assignement.
 
-This week you'll need to use a couple new important syscalls - `pipe()` and `dup2()`.
+# Differences from Part 1 Assignment
 
-The `pipe()` command creates a 1-way communication path that is implemented with two file descriptions. Conceptually it looks like this:
+- We've restructured the code slightly to move all implementation details into the lib file (`dshlib.c`) out of `dsh_cli.c`. **You do not need to write any code in `dsh_cli.c`!**
+- This week we'll implement a fork/exec pattern to execute external commands; these commands should execute and behave just as they would if you ran them from your default shell; last week we only printed command lines that we parsed
+- If you did the `dragon` extra credit, we moved the implementation into `dragon.c`
+- We will NOT implement pipe splitting or multiple commands in one command line input; last week we implemented parsing the CLI by pipe just to print commands, but actually implementing pipes to execute commands is beyond the scope of this week's assignement - we will get to it but not this week!
+  - This week we work with a single `cmd_buff` type at a time; we will not use the `command_list_t` from last week
+  - This an example of some refactoring from last week's code, you can adapt your parsing logic but omit the pipe logic until we get to that in a future assignement
 
-```txt
-  process-1-output --write--> pipe[fd1]:pipe[fd0] --read--> process-2-input
-```
+# Fork / Exec
 
-How do the pipes get "connected" between the processes? That's where `dup2()` comes in.
+Let's introduce two new system calls: fork() and exec(). These calls are fundamental to process creation and execution in all Unix-like operating systems. 
 
-> Tip: pipes should be created and connected inside a `fork()`; you've already used `fork/execvp` to implement a single command. This time you'll need to do that in a loop, because each command should get it's own `fork/execvp`. So, you'll need to handle `pipe()` and `dup2()` _inside_ each child's fork.
+When a process calls fork(), the operating system creates a new child process that is an exact copy of the parent, inheriting its memory, file descriptors, and execution state. The child process receives a return value of 0 from fork(), while the parent receives the child's process ID. After forking, the child process often replaces its memory image with a new executable using one of the exec() family of functions (e.g., execl(), execv(), execvp()). 
 
-Think of `dup2()` as sort of patching or redirection. The function signature is:
+Unlike fork(), exec() does not create a new process but instead replaces the calling process’s address space with a new program, preserving file descriptors unless explicitly changed. This mechanism allows Unix shells to execute new programs by first forking a child process and then using exec() to run the desired binary while the parent process waits for the child to complete using wait().
 
-    `dup2(source_fd, target_fd)`
+Recall the fork/exec pattern from lecture slides and demo - we are implementing this two-step process using system calls.
 
-Remember that each forked child has it's own process space and set of file descriptors, to include `STDIN_FILENO` and `STDOUT_FILENO`. So, inside each child process, you could use dup2 to _replace_ the child's STDIN and STDOUT with pipe file descriptors instead.
+![fork-exec](fork-exec-1.png)
 
-**Preventing Descriptor Leaks**
+![fork-exec](fork-exec-2.png)
 
-When you use `dup2()`, it _copies_ the source FD onto the target, effectively replacing the target. The source is no longer used, and can be closed. If you don't close the original pipes after copying with `dup2()`, you have introduced a **descriptor leak**; this could cause your program to run out of available file descriptors.
-
-# Multiple Children / Waitpid
-
-Since you must create multiple forks to handle piped commands, be sure to wait on all of them with `waitpid()`, which can be used to wait for a specific process id. _(Hint: you'll need to save the pid of each process you fork)._
+Remember that the fork/exec pattern requires you to use conditional branching logic to implement the child path and the parent path in the code. We did a basic demo of this in class using this demo code https://github.com/drexel-systems/SysProg-Class/blob/main/demos/process-thread/2-fork-exec/fork-exec.c. In the demo we used `execv()`, which requires an absolute path to the binary. In this assignement you should use `execvp()`; `execvp()` will search the `PATH` variable locations for binaries. As with the demo, you can use `WEXITSTATUS` to extract the status code from the child process.
 
 # Assignment Details
 
@@ -42,32 +41,85 @@ Since you must create multiple forks to handle piped commands, be sure to wait o
 
 The file [./starter/dshlib.h](./starter/dshlib.h) contains some useful definitions and types. Review the available resources in this file before you start coding - these are intended to make your work easier and more robust!
 
-### Step 2 - Re-implement Your Main Loop and Parsing Code in exec_local_cmd_loop() to parse multiple commands by pipe [./starter/dshlib.c](./starter/dshlib.c)
+### Step 2 - Implement `cd` in [./starter/dshlib.c](./starter/dshlib.c)
 
-This should mostly be a refactoring, copy/paste exercise to merge your solutions from the first two shell assignments. You need to combine your pipe tokenizing solution with loading up `cmd_buff_t` ultimately into a `command_list_t`.
+Building on your code from last week, implement the `cd` command.
 
-### Step 3 - Implement pipelined execution of the parsed commands [./starter/dshlib.c](./starter/dshlib.c)
+- when called with no arguments, `cd` does nothing (this is different than Linux shell behavior; shells implement `cd` as `cd ~1` or `cd $HOME`; we'll do that in a future assignement)
+- when called with one argument, `chdir()` the current dsh process into the directory provided by argument
 
-The first part of this is a refactoring problem - instead of just one `fork/exec`, you'll need to do that in a loop and keep track of the child pids and child exit statuses.
+### Step 3 - Re-implement Your Main Loop and Parsing Code in exec_local_cmd_loop() [./starter/dshlib.c](./starter/dshlib.c)
 
-The second part is implementing pipe logic. The section above named "Pipes" contains everything you really need to know! Also, check out demo code from this week's lecture [5-pipe-handling](https://github.com/drexel-systems/SysProg-Class/tree/main/demos/process-thread/5-pipe-handling). 
+Implement `exec_local_cmd_loop()` by refactoring your code from last week to use 1 `cmd_buff` type in the main loop instead of using a command list. 
 
+On each line-of-input parsing, you should populate `cmd_buff` using these rules:
 
-### Step 4 - Create BATS Tests
+- trim ALL leading and trailing spaces
+- eliminate duplicate spaces UNLESS they are in a quoted string
+- account for quoted strings in input; treat a quoted string with spaces as a single argument
+  - for example, given ` echo    " hello,    world"  ` you would parse this as: `["echo", " hello,    world"]`; note that spaces inside the double quotes were preserved
 
-You should now be familiar with authoring your own [bash-based BATS unit tests](https://bats-core.readthedocs.io/en/stable/tutorial.html#your-first-test) from the prior assignment.
+`cmd_buff` is provided to get you started. You don't have to use this struct, but it is all that's required to parse a line of input into a `cmd_buff`.
 
-Same as last week, you have an "assignment-tests.sh" file that we provide and you cannot change, and a "student_tests.sh" file that **you need to add your own tests to**:
+```c
+typedef struct cmd_buff
+{
+    int  argc;
+    char *argv[CMD_ARGV_MAX];
+    char *_cmd_buffer;
+} cmd_buff_t;
+```
+
+### Step 4 - Implement fork/exec pattern in [./starter/dshlib.c](./starter/dshlib.c)
+
+Implement fork/exec of external commands using `execvp()`. This is a pretty straight-forward task; once the command and it's arguments are parsed, you can pass them straight to `execvp()`.
+
+Don't forget to implement a wait of the return code, and extraction of the return code. We're not doing anything with the return code yet, unless you are doing extra credit.
+
+### Step 5 - Create BATS Tests
+
+So far we've provided pre-built a `test.sh` file with assigments. These files use the [bash-based BATS unit test framework](https://bats-core.readthedocs.io/en/stable/tutorial.html#your-first-test).
+
+Going forward, assignements will have a bats folder structure like this:
 
 - your-workspace-folder/
   - bats/assignement_tests.sh
   - bats/student_tests.sh
 
-**This week we expect YOU to come up with the majority of the test cases! If you have trouble, look at the tests we provided from prior weeks**
+**bats/assignment_tests.sh**
 
-**Be sure to run `make test` and verify your tests pass before submitting assignments.**
+- DO NOT EDIT THIS FILE
+- assignment_tests.sh contains tests that must pass to meet the requirements of the assignment
+- it is run as part of `make test`; remember to run this to verify your code
 
-### Step 5 - Answer Questions
+**bats/student_tests.sh**
+
+- this file must contain YOUR test suite to help verify your code
+- for some assignments you will be graded on creation of the tests, and it is your responsibility to make sure the tests provide adequate coverage
+- this file is also run with `make test`
+
+**About BATS**
+
+Key points of BATS testing - 
+
+- file header is `#!/usr/bin/env bats` such that you can execute tests by simply running `./test_file.sh`
+- incorrect `\r\n` can cause execution to fail - easiest way to avoid is use the [drexel-cci](https://marketplace.visualstudio.com/items?itemName=bdlilley.drexel-cci) extension to download assignement code; if you do not use this, make sure you do not copy any windows line endings into the file during a copy/paste
+- assertions are in square braces
+  - example: check output `[ "$stripped_output" = "$expected_output" ]`
+  - example: check return code `$status` variable: `[ "$status" -eq 0 ]`
+
+Please review the BATS link above if you have questions on syntax or usage. You can also look at test files we provided with assignment for more examples. **You will be graded on the quality of breadth of your unit test suite.**
+
+What this means to you - follow these guidelines when writing tests:
+
+- cover every type of functionallity; for example, you need to cover built-in command and external commands
+- test for all use cases / edge cases - for example, for the built-in `cd` command you might want to verify that:
+  - when called without arguments, the working dir doesn't change (you could verify with `pwd`)
+  - when called with one argument, it changes directory to the given argument (again, you can verify with `pwd`)
+- be thorough - try to cover all the possible ways a user might break you program!
+- write tests first; this is called "Test Driven Development" - to learn more, check out [Martin Fowler on TDD](https://martinfowler.com/bliki/TestDrivenDevelopment.html)
+
+### Step 6 - Answer Questions
 
 Answer the questions located in [./questions.md](./questions.md).
 
@@ -75,61 +127,66 @@ Answer the questions located in [./questions.md](./questions.md).
 The below shows a sample run executing multiple commands and the expected program output:
 
 ```bash
-./dsh
-dsh3> ls | grep ".c" 
-dragon.c
-dsh_cli.c
-dshlib.c
-dsh3> exit
-exiting...
-cmd loop returned 0
+./dsh 
+dsh2> uname -a
+Linux ubuntu 6.12.10-orbstack-00297-gf8f6e015b993 #42 SMP Sun Jan 19 03:00:07 UTC 2025 aarch64 aarch64 aarch64 GNU/Linux
+dsh2> uname
+Linux
+dsh2> echo "hello,      world"
+hello,      world
+dsh2> pwd
+/home/ben/SysProg-Class-Solutions/assignments/4-ShellP2/solution
+dsh2> ls 
+dir1  dragon.c  dragon.txt  dsh  dsh_cli.c  dshlib.c  dshlib.h  fancy_code_do_not_use  makefile  shell_roadmap.md  test.sh  wip
+dsh2> cd dir1
+dsh2> pwd
+/home/ben/SysProg-Class-Solutions/assignments/4-ShellP2/solution/dir1
+dsh2> 
 ```
 
 ### Extra Credit: +10
 
-Last week you should have learned about redirection (it was part of the assignment's research question). Once you've implemented pipes for this assignment, redirection is a natural next step.
+This week we're being naive about return codes from external commands; if there is any kind of failure, we just print the `CMD_ERR_EXECUTE` message.
 
-**Requirements**
+Implement return code handling for extra credit. Hint - check out `man execvp` and review the `errno` and return value information.
 
-- parse `<` and `>` during command buffer creation; you'll need to parse and track these on `cmd_buff_t`
-- modify command execution to use `dup2()` in a similar way as you did for pipes; you can copy the in and out fd's specified by the user on to STDIN or STDOUT of the child's forked process
+Errno and value definitions are in `#include <errno.h>`. 
 
-Example run:
+Tips:
 
-```bash
-./dsh
-dsh3> echo "hello, class" > out.txt
-dsh3> cat out.txt
-hello, class
-```
+- in the child process, `errno` will contain the error value if there was an error; so return this from your child process
+- the `WEXITSTATUS` macro will extract `errno`
 
-### Extra Credit++: +5
+Requirements:
 
-Extend the first extra credit to implement `>>`. This is the same as `>`, except the target fd is in append mode.
+- Check for all file-related status codes from `errno.h` that you might expect when trying to invoke a binary from $PATH; for example - `ENOENT` is file not found, `EACCES` is permission denied
+- Print a suitable message for each error you detect
+- Implement a "rc" builtin command that prints the return code of the last operation; for example, if the child process returns `-1`, `rc` should output `-1`
+- **Don't forget to add unit tests in** `./bats/student_tests.sh`!
 
 Example run:
 
 ```bash
 ./dsh
-dsh3> echo "hello, class" > out.txt
-dsh3> cat out.txt
-hello, class
-dsh3> echo "this is line 2" >> out.txt
-dsh3> cat out.txt
-hello, class
-this is line 2
-dsh3> 
+dsh2> not_exists
+Command not found in PATH
+dsh2> rc
+2
+dsh2>
 ```
+
+This extra credit is a precursor to implementing variables; shells set the variable `$?` to the return code of the last executed command. A full variable implementation is beyond the scope of this assignement, so we opted to create the `rc` builtin to mimic the behavior of the `$?` variable in other shells.
 
 #### Grading Rubric
 
-- 50 points: Correct implementation of required functionality
-- 5 points:  Code quality (how easy is your solution to follow)
-- 10 points: Answering the written questions: [questions.md](./questions.md)
-- 10 points: Quality and breadth of BATS unit tests
-- 10 points: [EXTRA CREDIT] handle < and > redirection
-- 5 points: [EXTRA CREDIT++] handle >> append redirection
+This assignment will be weighted 50 points.
 
-Total points achievable is 90/75.
+- 25 points:  Correct implementation of required functionality
+- 5 points:  Code quality (how easy is your solution to follow)
+- 15 points: Answering the written questions: [questions.md](./questions.md)
+- 15 points: Quality and breadth of BATS unit tests
+- 10 points:  [EXTRA CREDIT] handle return codes for execvp
+
+Total points achievable is 70/60. 
 
 
