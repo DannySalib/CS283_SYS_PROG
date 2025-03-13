@@ -18,14 +18,22 @@ typedef struct command
 
 #include <stdbool.h>
 
+//typedef struct cmd_buff
+//{
+//    int  argc;
+//    char *argv[CMD_ARGV_MAX];
+//    char *_cmd_buffer;
+//    char *input_file;  // extra credit, stores input redirection file (for `<`)
+//    char *output_file; // extra credit, stores output redirection file (for `>`)
+//    bool append_mode; // extra credit, sets append mode fomr output_file
+//} cmd_buff_t;
+
 typedef struct cmd_buff
 {
     int  argc;
-    char *argv[CMD_ARGV_MAX];
+    int num_commands;
+    char** argv[CMD_ARGV_MAX];
     char *_cmd_buffer;
-    char *input_file;  // extra credit, stores input redirection file (for `<`)
-    char *output_file; // extra credit, stores output redirection file (for `>`)
-    bool append_mode; // extra credit, sets append mode fomr output_file
 } cmd_buff_t;
 
 typedef struct command_list{
@@ -35,11 +43,17 @@ typedef struct command_list{
 
 //Special character #defines
 #define SPACE_CHAR  ' '
+#define SPACE_STRING " "
 #define PIPE_CHAR   '|'
 #define PIPE_STRING "|"
+#define DOUBLE_QUOTE_STRING "\""
+#define SINGLE_QUOTE_STRING "\'"
+#define DOUBLE_QUOTE_CHAR '\"'
+#define SINGLE_QUOTE_CHAR '\''
 
 #define SH_PROMPT       "dsh4> "
 #define EXIT_CMD        "exit"
+#define CD_CMD "cd"
 #define RC_SC           99
 #define EXIT_SC         100
 
@@ -52,7 +66,8 @@ typedef struct command_list{
 #define ERR_MEMORY              -5
 #define ERR_EXEC_CMD            -6
 #define OK_EXIT                 -7
-
+#define ERR_PIPE                -8
+#define ERR_FORK                -9
 
 
 //prototypes
@@ -63,6 +78,7 @@ int build_cmd_buff(char *cmd_line, cmd_buff_t *cmd_buff);
 int close_cmd_buff(cmd_buff_t *cmd_buff);
 int build_cmd_list(char *cmd_line, command_list_t *clist);
 int free_cmd_list(command_list_t *cmd_lst);
+void execute_pipeline(cmd_buff_t *cmd);
 
 //built in command stuff
 typedef enum {
@@ -81,7 +97,7 @@ Built_In_Cmds exec_built_in_cmd(cmd_buff_t *cmd);
 //main execution context
 int exec_local_cmd_loop();
 int exec_cmd(cmd_buff_t *cmd);
-int execute_pipeline(command_list_t *clist);
+//int execute_pipeline(command_list_t *clist);
 
 
 //output constants

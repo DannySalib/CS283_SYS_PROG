@@ -13,6 +13,7 @@
 #define RDSH_DEF_SVR_INTFACE    "0.0.0.0"   //Default start all interfaces
 #define RDSH_DEF_CLI_CONNECT    "127.0.0.1" //Default server is running on
                                             //localhost 127.0.0.1
+#define BACKLOG 10
 
 //constants for buffer sizes
 #define RDSH_COMM_BUFF_SZ       (1024*64)   //64K
@@ -20,6 +21,7 @@
                                             //if the command is to stop the
                                             //server.  See documentation for 
                                             //exec_client_requests() for more info
+#define STOP_SERVER_CMD "stop-server"
 
 //end of message delimiter.  This is super important.  TCP is a stream, therefore
 //the protocol designer is responsible for managing where messages begin and end
@@ -65,11 +67,12 @@ int send_message_eof(int cli_socket);
 int send_message_string(int cli_socket, char *buff);
 int process_cli_requests(int svr_socket);
 int exec_client_requests(int cli_socket);
-int rsh_execute_pipeline(int socket_fd, command_list_t *clist);
+int rsh_execute_pipeline(int socket_fd, cmd_buff_t *clist);
 
 // SEE COMMENTS IN THE CODE, THESE ARE OPTIONAL IN CASE YOU WANT TO PROVIDE
 // SUPPORT FOR BUILT-IN FUNCTIONS DIFFERENTLY 
 Built_In_Cmds rsh_match_command(const char *input);
 Built_In_Cmds rsh_built_in_cmd(cmd_buff_t *cmd);
 
+int parse_buffer_into_cmd (char* buff, cmd_buff_t *cmd);
 #endif

@@ -12,8 +12,6 @@
 #include "rshlib.h"
 
 
-
-
 /*
  * exec_remote_cmd_loop(server_ip, port)
  *      server_ip:  a string in ip address format, indicating the servers IP
@@ -90,9 +88,78 @@
  *   function after cleaning things up.  See the documentation for client_cleanup()
  *      
  */
-int exec_remote_cmd_loop(char *address, int port)
-{
-    return WARN_RDSH_NOT_IMPL;
+int exec_remote_cmd_loop(char *address, int port) {
+    // Step 1: Allocate buffers for sending and receiving data
+    char *request_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);
+    char *response_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);
+    
+    if (!request_buff || !response_buff) {
+        return client_cleanup(-1, request_buff, response_buff, ERR_MEMORY);
+    }
+
+    // Step 2: Create a network connection to the server
+    int cli_socket = start_client(address, port);
+    if (cli_socket < 0) {
+        return client_cleanup(cli_socket, request_buff, response_buff, ERR_RDSH_CLIENT);
+    }
+
+    // Step 3: Enter an infinite loop to prompt the user for input commands
+    while (1) {
+        printf(SH_PROMPT);
+        if (fgets(request_buff, RDSH_COMM_BUFF_SZ, stdin) == NULL) {
+            // Handle input error or EOF (Ctrl+D)
+            return client_cleanup(cli_socket, request_buff, response_buff, OK);
+        }
+
+        // Remove newline character from the input
+        size_t len = strlen(request_buff);
+        if (len > 0 && request_buff[len - 1] == '\n') {
+            request_buff[len - 1] = '\0';
+        }
+
+        // Step 4: Send the command to the server
+        if (send(cli_socket, request_buff, strlen(request_buff), 0) < 0) {
+            return client_cleanup(cli_socket, request_buff, response_buff, ERR_RDSH_COMMUNICATION);
+        }
+
+        // Step 5: Receive the response from the server
+        while (1) {
+            int recv_bytes = recv(cli_socket, response_buff, RDSH_COMM_BUFF_SZ, 0);
+            if (recv_bytes < 0) {
+                return client_cleanup(cli_socket, request_buff, response_buff, ERR_RDSH_COMMUNICATION);
+            } else if (recv_bytes == 0) {
+                // Server closed the connection
+                printf(RCMD_SERVER_EXITED);
+                return client_cleanup(cli_socket, request_buff, response_buff, OK);
+            } else {
+                // Check if the last byte is the EOF character
+                int is_eof = (response_buff[recv_bytes - 1] == RDSH_EOF_CHAR) ? 1 : 0;
+                if (is_eof) {
+                    // Remove the EOF character before printing
+                    response_buff[recv_bytes - 1] = '\0';
+                }
+
+                // Print the received data
+                printf("%.*s", recv_bytes, response_buff);
+
+                if (is_eof) {
+                    // Break out of the receive loop if EOF is encountered
+                    break;
+                }
+            }
+        }
+
+        // Step 6: Check if the command was "stop-server" or "exit"
+        if (strcmp(request_buff, STOP_SERVER_CMD) == 0) {
+            printf(RCMD_MSG_SVR_STOP_REQ);
+            return client_cleanup(cli_socket, request_buff, response_buff, OK);
+        } else if (strcmp(request_buff, "exit") == 0) {
+            return client_cleanup(cli_socket, request_buff, response_buff, OK);
+        }
+    }
+
+    // This point should never be reached
+    return client_cleanup(cli_socket, request_buff, response_buff, OK);
 }
 
 /*
@@ -118,8 +185,36 @@ int exec_remote_cmd_loop(char *address, int port)
  *          ERR_RDSH_CLIENT:    If socket() or connect() fail
  * 
  */
-int start_client(char *server_ip, int port){
-    return WARN_RDSH_NOT_IMPL;
+int start_client(char *server_ip, int port) {
+    // Step 1: Create the client socket
+    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket < 0) {
+        perror("socket");
+        return ERR_RDSH_CLIENT;
+    }
+
+    // Step 2: Configure the server address structure
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr)); // Clear the structure
+    server_addr.sin_family = AF_INET; // IPv4
+    server_addr.sin_port = htons(port); // Port in network byte order
+
+    // Convert the server IP address from string to binary form
+    if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
+        perror("inet_pton");
+        close(client_socket);
+        return ERR_RDSH_CLIENT;
+    }
+
+    // Step 3: Connect to the server
+    if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        close(client_socket);
+        return ERR_RDSH_CLIENT;
+    }
+
+    // Step 4: Return the client socket file descriptor
+    return client_socket;
 }
 
 /*
